@@ -1,0 +1,17 @@
+[package]
+name = "sparkle"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+glium = "*"                                                                                                                                                                                                                               
+winit = "*"
+image = "*"
+cgmath = "*"
+num = "*"
+libm = "0.2.5"
+legion = "0.4.0"
+obj-rs = "0.7.0"
+glutin = "0.29.1"
