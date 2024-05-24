@@ -6,11 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-glium = "*"                                                                                                                                                                                                                               
-winit = "*"
-image = "*"
-cgmath = "*"
-num = "*"
+glium = "0.34.0"
+winit = "0.29.15"
+image = "0.15.0"
+cgmath = "0.18.0"
+num = "0.4.1"
 libm = "0.2.5"
 legion = "0.4.0"
 obj-rs = "0.7.0"
