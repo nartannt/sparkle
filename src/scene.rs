@@ -23,6 +23,7 @@ use legion::storage::Component;
 use legion::world::World;
 use legion::world::WorldOptions;
 use legion::IntoQuery;
+use legion::Entity;
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -35,7 +36,7 @@ pub struct Scene {
     pub is_active: bool,
 
     // list of all the gameobjects in our scene
-    pub game_objects: Vec<GameObject>,
+    pub game_objects: HashMap<i64, Entity>,
 
     // since we will only deal with go in relation to their scene
     // it makes sense to have a world per scene
@@ -62,7 +63,7 @@ impl Scene {
         Scene {
             name: "new scene".to_string(),
             is_active: true,
-            game_objects: Vec::new(),
+            game_objects: HashMap::new(),
             models: HashMap::new(),
             programs: HashMap::new(),
             world: World::new(WorldOptions::default()),
@@ -75,13 +76,15 @@ impl Scene {
         self.display_clone = Some(display.clone());
     }
 
-    pub fn add_component<C: Component>(&mut self, go: &GameObject, component: C) {
-        let mut entry = self.world.entry(go.entity).unwrap();
+    pub fn add_component<C: Component>(&mut self, go: GameObject, component: C) {
+        let entity = self.game_objects.get(&go.get_id()).unwrap();
+        let mut entry = self.world.entry(*entity).unwrap();
         entry.add_component(component);
     }
 
     pub fn add_object(&mut self, go: GameObject) {
-        self.game_objects.push(go);
+        let go_entry = self.world.push(());
+        self.game_objects.insert(go.get_id(), go_entry);
     }
 
     pub fn load_graphic_component(
@@ -114,7 +117,6 @@ impl Scene {
     }
 
     pub fn load_all_gc(&mut self) {
-        let go_to_load = self.game_objects.iter().filter(|go| !go.is_loaded);
         let mut gc_query = <&GraphicComponent>::query();
         let display_clone = self.display_clone.as_ref().unwrap();
         gc_query.iter(&self.world).for_each(|gc| {
@@ -208,14 +210,12 @@ impl Scene {
 
         let gc_query = <&GraphicComponent>::query();
 
-        for go in &self.game_objects {
-            if let Ok(gc) = self
-                .world
-                .entry(go.entity)
-                .unwrap()
-                .get_component::<GraphicComponent>()
-            {
-                draw_component(gc, &go.transform);
+        for (_, entity) in &self.game_objects {
+            let go_entry = self.world.entry(*entity).unwrap();
+            let gc_res = go_entry.get_component::<GraphicComponent>();
+            let transform_res = go_entry.get_component::<Transform>();
+            if let (Ok(gc), Ok(transform)) = (gc_res, transform_res) {
+                draw_component(gc, transform);
             }
         }
 

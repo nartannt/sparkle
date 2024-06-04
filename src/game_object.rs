@@ -1,34 +1,31 @@
-use crate::transform::Transform;
 
-use legion::storage::Component;
-use legion::world::Entity;
-use legion::world::World;
-use legion::EntityStore;
-
+// public interface for GameObject, only an id so that the scene can know which
+// components to retrieve
 pub struct GameObject {
     pub is_active: bool,
     pub is_loaded: bool,
-    pub entity: Entity,
-    pub transform: Transform,
+    // using an int might not be the best idea
+    pub(in crate) id: i64,
 }
 
+
 impl GameObject {
-    pub fn new(world: &mut World) -> Self {
-        let entity = world.push(());
+    pub fn new() -> Self {
         GameObject {
             is_active: true,
             is_loaded: false,
-            transform: Transform::default(),
-            entity,
+            // negative int for objects which haven't been added to a scene
+            id: -1
         }
     }
 
     pub fn is_active(&self) -> bool {
         return self.is_active;
     }
+
+    // would like this function to only be accessible from scene
+    pub fn get_id(&self) -> i64 {
+        return self.id;
+    }
 }
 
-pub fn has_component<T: Component>(go: &GameObject, world: &World) -> bool {
-    let entry = world.entry_ref(go.entity).unwrap();
-    return entry.archetype().layout().has_component::<T>();
-}

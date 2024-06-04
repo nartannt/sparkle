@@ -1,0 +1,3 @@
+
+Atomic TODOs :
+   - reformat modules such that GameObject.id is only accessible from scene
