@@ -1,9 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use crate::component::ComponentTrait;
-use crate::component::ComponentType;
-
 use std::fs;
 use std::fs::File;
 use std::io::BufReader;
@@ -27,9 +24,10 @@ extern crate obj;
 #[derive(Copy, Clone)]
 pub struct Vertex {
     position: (f32, f32, f32),
+    tex_coords: (f32, f32),
 }
 
-implement_vertex!(Vertex, position);
+implement_vertex!(Vertex, position, tex_coords);
 
 #[derive(Copy, Clone)]
 pub struct Normal {
@@ -81,20 +79,11 @@ impl<'a> GraphicComponent {
     pub fn add_model(&mut self, model: String) {
         self.geometry = Some(model);
     }
-}
-
-impl ComponentTrait for GraphicComponent {
-    fn is_active(&self) -> bool {
+    pub fn is_active(&self) -> bool {
         return self.is_active;
     }
-
-    fn set_active(&mut self, activation: bool) {
-        self.is_active = activation;
-    }
-    fn component_type(&self) -> ComponentType {
-        return ComponentType::GraphicComponent;
-    }
 }
+
 
 pub fn load_model(model_file_path: &Path, display: &Display<WindowSurface>) -> Option<ObjectModel> {
     let file_result = File::open(model_file_path);
@@ -128,6 +117,7 @@ pub fn load_model(model_file_path: &Path, display: &Display<WindowSurface>) -> O
                         .iter()
                         .map(|vertex| Vertex {
                             position: (vertex[0], vertex[1], vertex[2]),
+                            tex_coords: (0.0, 0.0),
                         })
                         .collect();
                     normals_vec = new_normals

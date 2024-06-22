@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use crate::component::ComponentTrait;
-
 use crate::game_object::GameObject;
 
 use crate::camera::Camera;

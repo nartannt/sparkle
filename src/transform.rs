@@ -1,9 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use crate::component::ComponentTrait;
-use crate::component::ComponentType;
-
 use cgmath::Matrix3;
 use cgmath::Matrix4;
 use cgmath::Quaternion;
@@ -242,17 +239,5 @@ impl Transform {
             self.position.x, self.position.y, self.position.z
         );
         println!("");
-    }
-}
-
-impl ComponentTrait for Transform {
-    fn is_active(&self) -> bool {
-        return true;
-    }
-
-    fn set_active(&mut self, _activation: bool) {}
-
-    fn component_type(&self) -> ComponentType {
-        ComponentType::Transform
     }
 }
