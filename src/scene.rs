@@ -80,7 +80,7 @@ impl Scene {
         entry.add_component(component);
     }
 
-    pub fn add_object(&mut self, go: GameObject) {
+    pub fn add_object(&mut self, go: &GameObject) {
         let go_entry = self.world.push(());
         self.game_objects.insert(go.get_id(), go_entry);
     }
