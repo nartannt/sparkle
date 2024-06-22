@@ -52,6 +52,7 @@ impl Game {
         let _game_loop = self.event_loop.run(move |ev, _| {
             let begin_frame_time = std::time::Instant::now();
             let next_frame_time = begin_frame_time + std::time::Duration::from_nanos(16_666_667);
+            println!("weewoo");
 
             match ev {
                 winit::event::Event::WindowEvent { event, .. } => match event {
