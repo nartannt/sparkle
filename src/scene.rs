@@ -194,6 +194,7 @@ impl Scene {
 
                 let matrix = obj_transform.uniform_matrix();
 
+                println!("drawing object");
                 target
                     .draw(
                         (positions, normals),
