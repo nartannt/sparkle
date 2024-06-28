@@ -49,9 +49,6 @@ pub struct Scene {
     // the first String is for the vertex shaders and the second one for fragment shaders
     pub programs: HashMap<(String, String), Program>,
 
-    // not sure if this is the right way to do things
-    pub display_clone: Option<Display<WindowSurface>>,
-
     // the camera which will draw the scene next, if it is none, the scene is not rendered
     pub render_cam: Option<Camera>,
 }
@@ -66,15 +63,10 @@ impl Scene {
             programs: HashMap::new(),
             world: World::new(WorldOptions::default()),
             render_cam: None,
-            display_clone: None,
         }
     }
 
-    pub fn add_display_clone(&mut self, display: &Display<WindowSurface>) {
-        self.display_clone = Some(display.clone());
-    }
-
-    pub fn add_component<C: Component>(&mut self, go: GameObject, component: C) {
+    pub fn add_component<C: Component>(&mut self, go: &GameObject, component: C) {
         let entity = self.game_objects.get(&go.get_id()).unwrap();
         let mut entry = self.world.entry(*entity).unwrap();
         entry.add_component(component);
@@ -114,11 +106,10 @@ impl Scene {
         }
     }
 
-    pub fn load_all_gc(&mut self) {
+    pub fn load_all_gc(&mut self, display_ref: &Display<WindowSurface>) {
         let mut gc_query = <&GraphicComponent>::query();
-        let display_clone = self.display_clone.as_ref().unwrap();
         gc_query.iter(&self.world).for_each(|gc| {
-            Self::load_graphic_component(display_clone, &mut self.programs, &mut self.models, gc)
+            Self::load_graphic_component(display_ref, &mut self.programs, &mut self.models, gc)
         });
     }
 
@@ -135,6 +126,7 @@ impl Scene {
     // will draw all active objects with active graphic components
     // we assume that all objects have at most one graphic component
     pub fn draw_scene(&mut self, mut target: Frame, camera: &Camera) {
+        //println!("drawing scene in theory");
         // refreshes the background colour
         target.clear_color_and_depth((0.0, 0.0, 1.0, 1.0), 1.0);
 
@@ -194,7 +186,7 @@ impl Scene {
 
                 let matrix = obj_transform.uniform_matrix();
 
-                println!("drawing object");
+                //println!("drawing object");
                 target
                     .draw(
                         (positions, normals),
@@ -210,6 +202,7 @@ impl Scene {
         let gc_query = <&GraphicComponent>::query();
 
         for (_, entity) in &self.game_objects {
+            //println!("here?");
             let go_entry = self.world.entry(*entity).unwrap();
             let gc_res = go_entry.get_component::<GraphicComponent>();
             let transform_res = go_entry.get_component::<Transform>();

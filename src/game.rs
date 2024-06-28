@@ -4,62 +4,55 @@ use crate::input::KeyboardState;
 use crate::scene::Scene;
 
 use std::thread::sleep;
+
 use winit::event::KeyEvent;
-use winit::event::WindowEvent;
+//use winit::event::WindowEvent;
 use winit::event::WindowEvent::KeyboardInput;
 use winit::event::WindowEvent::RedrawRequested;
-use winit::event_loop::EventLoop;
+use winit::event::Event::AboutToWait;
+//use winit::event_loop::ControlFlow::WaitUntil;
+//use winit::event_loop::EventLoop;
 use winit::keyboard::KeyCode;
 use winit::keyboard::PhysicalKey::Code;
 //use winit::keyboard::Key;
 
 //use glutin::event::VirtualKeyCode;
+use winit::event_loop::EventLoopBuilder;
 use glium::backend::glutin::SimpleWindowBuilder;
-use glium::glutin::surface::WindowSurface;
+//use glium::glutin::surface::WindowSurface;
 
 pub struct Game {
-    pub display: glium::Display<WindowSurface>,
-    pub event_loop: EventLoop<()>,
-
     pub scenes: Vec<Scene>,
 }
 
 impl Game {
     pub fn new() -> Game {
-        let event_loop = winit::event_loop::EventLoop::new().unwrap();
-        let simple_window_builder = SimpleWindowBuilder::new();
-        //let cb = glutin::ContextBuilder::new().with_depth_buffer(24);
-        let (_, display) = simple_window_builder.build(&event_loop);
-
         Game {
-            display,
-            event_loop,
             scenes: Vec::new(),
         }
     }
 
     pub fn add_scene(&mut self, mut scene: Scene) {
-        scene.add_display_clone(&self.display);
         self.scenes.push(scene);
     }
 
     pub fn run(mut self) {
+        let event_loop = EventLoopBuilder::new().build().expect("event loop building");
+        let (window, display) = SimpleWindowBuilder::new().build(&event_loop);
+
         let mut keyboard_state = KeyboardState::new();
         let mut main_camera = Camera::new();
 
-        self.scenes[0].load_all_gc();
+        self.scenes[0].load_all_gc(&display);
 
-        let _game_loop = self.event_loop.run(move |ev, _| {
+        let _game_loop = event_loop.run(move |ev, window_target| {
+            //println!("beginning of game loop");
             let begin_frame_time = std::time::Instant::now();
             let next_frame_time = begin_frame_time + std::time::Duration::from_nanos(16_666_667);
-            println!("weewoo");
 
             match ev {
                 winit::event::Event::WindowEvent { event, .. } => match event {
-                    WindowEvent::CloseRequested => {
-                        //*control_flow = glutin::event_loop::ControlFlow::Exit;
-                        return;
-                    }
+                    winit::event::WindowEvent::CloseRequested => window_target.exit(),
                     KeyboardInput {
                         event:
                             KeyEvent {
@@ -68,7 +61,7 @@ impl Game {
                             },
                         ..
                     } => {
-                        //*control_flow = glutin::event_loop::ControlFlow::Exit;
+                        println!("pressing x");
                         return;
                     }
                     KeyboardInput {
@@ -85,24 +78,23 @@ impl Game {
                     RedrawRequested => {
                         update_camera(&keyboard_state, &mut main_camera);
 
-                        let target = self.display.draw();
+                        let target = display.draw();
 
                         self.scenes[0].draw_scene(target, &main_camera);
 
                         if std::time::Instant::now() > next_frame_time {
                             println!("Warning: needed more time for this frame");
                         }
-
-                        sleep(next_frame_time - std::time::Instant::now());
-
-                        //*control_flow = WaitUntil(next_frame_time);
-                    }
-                    _ => {
-                        //println!("event: {:?}", event);
-                    }
+                    },
+                    _ => (),
                 },
-                _ => (),
-            }
+                AboutToWait => {
+                    window.request_redraw();
+                    sleep(next_frame_time - std::time::Instant::now());
+                }
+                _ => (),//println!("event: {:?}", ev),
+            };
         });
+        println!("end of game loop");
     }
 }
