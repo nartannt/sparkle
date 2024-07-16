@@ -45,9 +45,10 @@ pub struct ObjectModel {
 //#[derive(Default)]
 pub struct GraphicComponent {
     pub is_active: bool,
-    pub geometry: Option<String>,
-    pub vertex_shader: Option<String>,
-    pub fragment_shader: Option<String>,
+    pub model_path: Option<String>,
+    pub texture_path: Option<String>,
+    pub vertex_shader_path: Option<String>,
+    pub fragment_shader_path: Option<String>,
 }
 
 impl<'a> GraphicComponent {
@@ -58,26 +59,31 @@ impl<'a> GraphicComponent {
     ) -> Self {
         GraphicComponent {
             is_active: true,
-            geometry: model_path,
-            vertex_shader: vertex_shader_path,
-            fragment_shader: fragment_shader_path,
+            model_path,
+            texture_path: None,
+            vertex_shader_path,
+            fragment_shader_path,
         }
     }
 
     pub fn can_be_drawn(&self) -> bool {
-        let res = self.geometry.is_some()
-            && self.vertex_shader.is_some()
-            && self.fragment_shader.is_some();
+        let res = self.model_path.is_some()
+            && self.vertex_shader_path.is_some()
+            && self.fragment_shader_path.is_some();
         return res;
     }
 
     pub fn add_shaders(&mut self, vertex_shader: String, fragment_shader: String) {
-        self.vertex_shader = Some(vertex_shader);
-        self.fragment_shader = Some(fragment_shader);
+        self.vertex_shader_path = Some(vertex_shader);
+        self.fragment_shader_path = Some(fragment_shader);
     }
 
-    pub fn add_model(&mut self, model: String) {
-        self.geometry = Some(model);
+    pub fn add_texture(&mut self, texture_path: String) {
+        self.texture_path = Some(texture_path);
+    }
+
+    pub fn add_model(&mut self, model_path: String) {
+        self.model_path = Some(model_path);
     }
     pub fn is_active(&self) -> bool {
         return self.is_active;

@@ -61,7 +61,8 @@ impl Game {
                             },
                         ..
                     } => {
-                        println!("pressing x");
+                        println!("exiting");
+                        window_target.exit();
                         return;
                     }
                     KeyboardInput {
@@ -95,6 +96,5 @@ impl Game {
                 _ => (),//println!("event: {:?}", ev),
             };
         });
-        println!("end of game loop");
     }
 }

@@ -23,6 +23,8 @@ use legion::world::WorldOptions;
 use legion::IntoQuery;
 use legion::Entity;
 
+use image::io::Reader as ImageReader;
+
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -49,6 +51,8 @@ pub struct Scene {
     // the first String is for the vertex shaders and the second one for fragment shaders
     pub programs: HashMap<(String, String), Program>,
 
+    pub textures: HashMap<String, glium::texture::Texture2d>,
+
     // the camera which will draw the scene next, if it is none, the scene is not rendered
     pub render_cam: Option<Camera>,
 }
@@ -61,6 +65,7 @@ impl Scene {
             game_objects: HashMap::new(),
             models: HashMap::new(),
             programs: HashMap::new(),
+            textures: HashMap::new(),
             world: World::new(WorldOptions::default()),
             render_cam: None,
         }
@@ -77,15 +82,18 @@ impl Scene {
         self.game_objects.insert(go.get_id(), go_entry);
     }
 
+    // TODO find out if it is possible to take &mut self as argument instead of getting everything
+    // through by hand
     pub fn load_graphic_component(
-        display_clone: &Display<WindowSurface>,
-        programs: &mut HashMap<(String, String), Program>,
-        models: &mut HashMap<String, ObjectModel>,
         gc: &GraphicComponent,
+        display_clone: &Display<WindowSurface>,
+        models: &mut HashMap<String, ObjectModel>,
+        programs: &mut HashMap<(String, String), Program>,
+        textures: &mut HashMap<String, glium::texture::Texture2d>,
     ) {
         // loads and adds the model corresponding to the gc of the go if said model hasn't already
         // been loaded, when improving performance, will need to check that
-        if let Some(geometry) = &gc.geometry {
+        if let Some(geometry) = &gc.model_path {
             models
                 .entry(geometry.to_string())
                 .or_insert_with(|| load_model(Path::new(&geometry), display_clone).unwrap());
@@ -95,7 +103,7 @@ impl Scene {
 
         // same thing as models but with shaders
         if let (Some(vertex_shader), Some(fragment_shader)) =
-            (&gc.vertex_shader, &gc.fragment_shader)
+            (&gc.vertex_shader_path, &gc.fragment_shader_path)
         {
             let program_key = (vertex_shader.clone(), fragment_shader.clone());
             programs.entry(program_key).or_insert_with(|| {
@@ -104,12 +112,24 @@ impl Scene {
         } else {
             println!("Warning: object has graphic cock but no shaders")
         }
+
+        // same thing again but with textures
+        if let Some(texture_path) = &gc.texture_path {
+            // copied from the tutorial
+            let image = ImageReader::open(texture_path).unwrap().decode().unwrap().to_rgba8();
+            let image_dimensions = image.dimensions();
+            let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+            let texture = glium::texture::Texture2d::new(display_clone, image).unwrap();
+            textures.insert(texture_path.to_string(), texture); 
+        } else {
+            println!("Warning: object has graphic cock but no textures")
+        }
     }
 
     pub fn load_all_gc(&mut self, display_ref: &Display<WindowSurface>) {
         let mut gc_query = <&GraphicComponent>::query();
         gc_query.iter(&self.world).for_each(|gc| {
-            Self::load_graphic_component(display_ref, &mut self.programs, &mut self.models, gc)
+            Self::load_graphic_component(gc, display_ref, &mut self.models, &mut self.programs, &mut self.textures)
         });
     }
 
@@ -168,17 +188,17 @@ impl Scene {
         // we need the game object in order to draw the object because that is where its
         // transform is stored
         let mut draw_component = |gc: &GraphicComponent, obj_transform: &Transform| {
-            //print!("drawing object in theory");
             //let go_entry = self.world.entry_ref(go.entity).unwrap();
             //let gc = go_entry.get_component::<GraphicComponent>().unwrap();
             if gc.is_active() && gc.can_be_drawn() {
                 // TODO this is very unsatisfactory, need to find some way to not have to use clones
                 let program_key = &(
-                    gc.vertex_shader.clone().unwrap(),
-                    gc.fragment_shader.clone().unwrap(),
+                    gc.vertex_shader_path.clone().unwrap(),
+                    gc.fragment_shader_path.clone().unwrap(),
                 );
+                let object_geometry = self.models.get(gc.model_path.as_ref().unwrap()).unwrap();
                 let program = self.programs.get(program_key).unwrap();
-                let object_geometry = self.models.get(gc.geometry.as_ref().unwrap()).unwrap();
+                let texture = self.textures.get(gc.texture_path.as_ref().unwrap()).unwrap();
 
                 let positions = &object_geometry.vertices;
                 let normals = &object_geometry.normals;
@@ -192,7 +212,7 @@ impl Scene {
                         (positions, normals),
                         indices,
                         &program,
-                        &uniform! {matrix: matrix, view: view, u_light: light, perspective: perspective},
+                        &uniform! {matrix: matrix, view: view, u_light: light, perspective: perspective, tex: texture},
                         &params,
                     )
                     .unwrap();
