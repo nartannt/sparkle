@@ -200,8 +200,7 @@ impl Scene {
                 let program = self.programs.get(program_key).unwrap();
                 let texture = self.textures.get(gc.texture_path.as_ref().unwrap()).unwrap();
 
-                let positions = &object_geometry.vertices;
-                let normals = &object_geometry.normals;
+                let vertices = &object_geometry.vertices;
                 let indices = &object_geometry.indices;
 
                 let matrix = obj_transform.uniform_matrix();
@@ -209,7 +208,7 @@ impl Scene {
                 //println!("drawing object");
                 target
                     .draw(
-                        (positions, normals),
+                        vertices,
                         indices,
                         &program,
                         &uniform! {matrix: matrix, view: view, u_light: light, perspective: perspective, tex: texture},

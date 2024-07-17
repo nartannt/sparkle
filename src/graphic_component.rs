@@ -14,32 +14,23 @@ use glium::IndexBuffer;
 use glium::Program;
 use glium::VertexBuffer;
 
-use obj::load_obj;
-use obj::Obj;
-use obj::ObjError;
+use tobj::load_obj;
 
 extern crate glium;
-extern crate obj;
+extern crate tobj;
 
 #[derive(Copy, Clone)]
 pub struct Vertex {
     position: (f32, f32, f32),
-    tex_coords: (f32, f32),
-}
-
-implement_vertex!(Vertex, position, tex_coords);
-
-#[derive(Copy, Clone)]
-pub struct Normal {
     normal: (f32, f32, f32),
+    tex_coord: (f32, f32),
 }
 
-implement_vertex!(Normal, normal);
+implement_vertex!(Vertex, position, normal, tex_coord);
 
 pub struct ObjectModel {
     pub vertices: glium::VertexBuffer<Vertex>,
-    pub normals: glium::VertexBuffer<Normal>,
-    pub indices: glium::IndexBuffer<u16>,
+    pub indices: glium::IndexBuffer<u32>,
 }
 
 //#[derive(Default)]
@@ -100,49 +91,50 @@ pub fn load_model(model_file_path: &Path, display: &Display<WindowSurface>) -> O
         }
         Ok(file) => {
             let input = BufReader::new(file);
-            let model_result: Result<Obj, ObjError> = load_obj(input);
-            match model_result {
+            let models_result = load_obj(model_file_path, &tobj::GPU_LOAD_OPTIONS);
+            match models_result {
                 Err(err) => {
                     println!("Warning, failed to load object: {}", err);
                     return None;
                 }
-                Ok(model) => {
-                    let new_vertices: Vec<[f32; 3]>;
-                    let new_normals: Vec<[f32; 3]>;
-                    (new_vertices, new_normals) = model
-                        .vertices
-                        .iter()
-                        .map(|vertex| (vertex.position, vertex.normal))
-                        .unzip();
+                Ok((models, materials)) => {
+                    // TODO this implies that if a single .obj file contains more than one model,
+                    // only the first one will loaded, the rest will be ignored
+                    let mesh = &models[0].mesh;
+                    
+                    let positions = mesh.positions.chunks_exact(3);
+                    let normals = mesh.normals.chunks_exact(3);
+                    // TODO this is not very pretty please don't be mad 🥺👉👈
+                    // TODO investigate because i cannot fathom why this is necessary
+                    let tmp = vec![0.0f32; 2 * mesh.positions.len() / 3];
+                    let tex_coords = 
+                        if mesh.texcoords.len() > 0 {
+                            mesh.texcoords.chunks_exact(2)
+                        } else {
+                            tmp.chunks_exact(2)
+                        };
+
+                    let vertex_info = positions.zip(normals).zip(tex_coords);
 
                     // need to factorise this, possibly with the previous line to avoid doing
                     // two loops
                     let vertices_vec: Vec<Vertex>;
-                    let normals_vec: Vec<Normal>;
-                    vertices_vec = new_vertices
-                        .iter()
-                        .map(|vertex| Vertex {
-                            position: (vertex[0], vertex[1], vertex[2]),
-                            tex_coords: (0.0, 0.0),
-                        })
-                        .collect();
-                    normals_vec = new_normals
-                        .iter()
-                        .map(|normal| Normal {
+                    vertices_vec = vertex_info
+                        .map(|((position, normal), tex_coord)| Vertex {
+                            position: (position[0], position[1], position[2]),
                             normal: (normal[0], normal[1], normal[2]),
+                            tex_coord: (tex_coord[0], tex_coord[1]),
                         })
                         .collect();
 
                     let vertices_vertex_buffer = VertexBuffer::new(display, &vertices_vec);
-                    let normals_vertex_buffer = VertexBuffer::new(display, &normals_vec);
                     let indices_vertex_buffer = IndexBuffer::new(
                         display,
                         glium::index::PrimitiveType::TrianglesList,
-                        &model.indices,
+                        &mesh.indices,
                     );
 
                     if vertices_vertex_buffer.is_err()
-                        || normals_vertex_buffer.is_err()
                         || indices_vertex_buffer.is_err()
                     {
                         println!("Error, could not create index buffers for this object");
@@ -152,7 +144,6 @@ pub fn load_model(model_file_path: &Path, display: &Display<WindowSurface>) -> O
                         // errors
                         let new_geometry = ObjectModel {
                             vertices: vertices_vertex_buffer.unwrap(),
-                            normals: normals_vertex_buffer.unwrap(),
                             indices: indices_vertex_buffer.unwrap(),
                         };
                         return Some(new_geometry);
