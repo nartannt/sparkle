@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use winit::event::ElementState;
-use winit::keyboard::KeyCode;
+use glium::winit::event::ElementState;
+use glium::winit::keyboard::KeyCode;
 
 // this code was stolen from https://github.com/rust-windowing/glutin/issues/708 because i couldn't
 // be asked to write it myself

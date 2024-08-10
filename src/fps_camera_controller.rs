@@ -6,10 +6,8 @@ use crate::camera::Camera;
 use crate::input::KeyboardState;
 use crate::transform::rotation_to_direction;
 use cgmath::Vector3;
-use glutin::event::VirtualKeyCode;
-use glutin::event::WindowEvent;
-use winit::keyboard::KeyCode::*;
-use winit::keyboard::SmolStr;
+use glium::winit::keyboard::KeyCode::*;
+use glium::winit::keyboard::SmolStr;
 
 // Once again could use more generic types, can't be bothered for now, might never be
 enum CamInstr {

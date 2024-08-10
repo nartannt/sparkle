@@ -5,19 +5,19 @@ use crate::scene::Scene;
 
 use std::thread::sleep;
 
-use winit::event::KeyEvent;
+use glium::winit::event::KeyEvent;
+use glium::winit::event::WindowEvent::KeyboardInput;
+use glium::winit::event::WindowEvent::RedrawRequested;
+use glium::winit::event::Event::AboutToWait;
+use glium::winit::keyboard::KeyCode;
+use glium::winit::keyboard::PhysicalKey::Code;
 //use winit::event::WindowEvent;
-use winit::event::WindowEvent::KeyboardInput;
-use winit::event::WindowEvent::RedrawRequested;
-use winit::event::Event::AboutToWait;
 //use winit::event_loop::ControlFlow::WaitUntil;
 //use winit::event_loop::EventLoop;
-use winit::keyboard::KeyCode;
-use winit::keyboard::PhysicalKey::Code;
 //use winit::keyboard::Key;
 
 //use glutin::event::VirtualKeyCode;
-use winit::event_loop::EventLoopBuilder;
+use glium::winit::event_loop::EventLoop;
 use glium::backend::glutin::SimpleWindowBuilder;
 //use glium::glutin::surface::WindowSurface;
 
@@ -37,8 +37,9 @@ impl Game {
     }
 
     pub fn run(mut self) {
-        let event_loop = EventLoopBuilder::new().build().expect("event loop building");
-        let (window, display) = SimpleWindowBuilder::new().build(&event_loop);
+        let event_loop = EventLoop::builder().build().expect("event loop building");
+        let (window, display) = SimpleWindowBuilder::new().with_title("fuck me").build(&event_loop);
+        println!("window created");
 
         let mut keyboard_state = KeyboardState::new();
         let mut main_camera = Camera::new();
@@ -51,8 +52,8 @@ impl Game {
             let next_frame_time = begin_frame_time + std::time::Duration::from_nanos(16_666_667);
 
             match ev {
-                winit::event::Event::WindowEvent { event, .. } => match event {
-                    winit::event::WindowEvent::CloseRequested => window_target.exit(),
+                glium::winit::event::Event::WindowEvent { event, .. } => match event {
+                    glium::winit::event::WindowEvent::CloseRequested => window_target.exit(),
                     KeyboardInput {
                         event:
                             KeyEvent {
