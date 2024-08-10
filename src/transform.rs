@@ -3,6 +3,7 @@
 
 use cgmath::Matrix3;
 use cgmath::Matrix4;
+use cgmath::Matrix;
 use cgmath::Quaternion;
 use cgmath::Vector3;
 use cgmath::Zero;
@@ -225,7 +226,8 @@ impl Transform {
             [0.0, 0.0, 0.0, 1.0f32],
         ]);
 
-        return (trans_matrix * scale_matrix * rot_matrix_4).into();
+        
+        return (trans_matrix.transpose() * scale_matrix * rot_matrix_4).into();
     }
 
     pub fn print_transform(self) -> () {

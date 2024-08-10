@@ -38,8 +38,7 @@ impl Game {
 
     pub fn run(mut self) {
         let event_loop = EventLoop::builder().build().expect("event loop building");
-        let (window, display) = SimpleWindowBuilder::new().with_title("fuck me").build(&event_loop);
-        println!("window created");
+        let (window, display) = SimpleWindowBuilder::new().build(&event_loop);
 
         let mut keyboard_state = KeyboardState::new();
         let mut main_camera = Camera::new();

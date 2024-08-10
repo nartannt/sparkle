@@ -47,7 +47,7 @@ impl Camera {
     pub fn view_matrix(self) -> [[f32; 4]; 4] {
         let fwd = Vector3::new(0.0, 0.0, 1.0);
         let up = Vector3::new(0.0, 1.0, 0.0);
-        let position = self.transform.get_position();
+        let pos = self.transform.get_position();
 
         let cam_rot = self.transform.get_qrot();
 
@@ -66,9 +66,9 @@ impl Camera {
         let u = Vector3::cross(f, s_norm);
 
         let p = [
-            -position[0] * s_norm[0] - position[1] * s_norm[1] - position[2] * s_norm[2],
-            -position[0] * u[0] - position[1] * u[1] - position[2] * u[2],
-            -position[0] * f[0] - position[1] * f[1] - position[2] * f[2],
+            -pos[0] * s_norm[0] - pos[1] * s_norm[1] - pos[2] * s_norm[2],
+            -pos[0] *      u[0] - pos[1] *      u[1] - pos[2] *      u[2],
+            -pos[0] *      f[0] - pos[1] *      f[1] - pos[2] *      f[2],
         ];
 
         let res = [
