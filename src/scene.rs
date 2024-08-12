@@ -77,7 +77,7 @@ impl Scene {
         entry.add_component(component);
     }
 
-    pub fn add_object(&mut self, go: &GameObject) {
+    pub fn add_object(&mut self, go: &mut GameObject) {
         let go_entry = self.world.push(());
         self.game_objects.insert(go.get_id(), go_entry);
     }
@@ -221,7 +221,6 @@ impl Scene {
         let gc_query = <&GraphicComponent>::query();
 
         for (_, entity) in &self.game_objects {
-            //println!("here?");
             let go_entry = self.world.entry(*entity).unwrap();
             let gc_res = go_entry.get_component::<GraphicComponent>();
             let transform_res = go_entry.get_component::<Transform>();

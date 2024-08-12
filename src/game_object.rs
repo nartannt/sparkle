@@ -27,5 +27,9 @@ impl GameObject {
     pub fn get_id(&self) -> i64 {
         return self.id;
     }
+
+    pub fn set_id(&mut self, new_id: i64) -> () {
+        self.id = new_id;
+    }
 }
 
