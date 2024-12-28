@@ -1,6 +1,7 @@
 use crate::camera::Camera;
 use crate::fps_camera_controller::update_camera;
 use crate::input::KeyboardState;
+use crate::input::MouseState;
 use crate::scene::Scene;
 
 use std::thread::sleep;
@@ -41,17 +42,28 @@ impl Game {
         let (window, display) = SimpleWindowBuilder::new().build(&event_loop);
 
         let mut keyboard_state = KeyboardState::new();
+        let mut mouse_state = MouseState::new();
         let mut main_camera = Camera::new();
 
-        self.scenes[0].load_all_gc(&display);
+        // TODO implement handling multiple scenes
+        let active_scene = &mut self.scenes[0];
+        active_scene.load_all_gc(&display);
 
         let _game_loop = event_loop.run(move |ev, window_target| {
             //println!("beginning of game loop");
             let begin_frame_time = std::time::Instant::now();
             let next_frame_time = begin_frame_time + std::time::Duration::from_nanos(16_666_667);
 
+            
+
             match ev {
-                glium::winit::event::Event::WindowEvent { event, .. } => match event {
+                glium::winit::event::Event::WindowEvent { event, .. } => {
+
+                    mouse_state.process_event(&event);
+                    // call user created systems
+                    
+                    // internal event handling
+                    match event {
                     glium::winit::event::WindowEvent::CloseRequested => window_target.exit(),
                     KeyboardInput {
                         event:
@@ -81,13 +93,15 @@ impl Game {
 
                         let target = display.draw();
 
-                        self.scenes[0].draw_scene(target, &main_camera);
+                        active_scene.draw_scene(target, &main_camera);
 
                         if std::time::Instant::now() > next_frame_time {
                             println!("Warning: needed more time for this frame");
                         }
                     },
                     _ => (),
+                };
+                active_scene.execute_frame_steps(&keyboard_state, &mouse_state, &event); 
                 },
                 AboutToWait => {
                     window.request_redraw();

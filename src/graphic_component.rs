@@ -45,15 +45,21 @@ pub struct GraphicComponent {
 impl<'a> GraphicComponent {
     pub fn new(
         model_path: Option<String>,
-        vertex_shader_path: Option<String>,
-        fragment_shader_path: Option<String>,
     ) -> Self {
+        let vertex_file_res = fs::read_to_string("assets/shaders/vertex_shader.glsl".to_string());
+        match vertex_file_res {
+            Err(err) => {
+                println!("Warning, failed to open vertex shader file: {}", err);
+                assert!(false);
+            }
+            Ok(_) => {}
+        };
         GraphicComponent {
             is_active: true,
             model_path,
             texture_path: None,
-            vertex_shader_path,
-            fragment_shader_path,
+            vertex_shader_path: Some("assets/shaders/vertex_shader.glsl".to_string()),
+            fragment_shader_path: Some("assets/shaders/fragment_shader.glsl".to_string()),
         }
     }
 
@@ -62,11 +68,6 @@ impl<'a> GraphicComponent {
             && self.vertex_shader_path.is_some()
             && self.fragment_shader_path.is_some();
         return res;
-    }
-
-    pub fn add_shaders(&mut self, vertex_shader: String, fragment_shader: String) {
-        self.vertex_shader_path = Some(vertex_shader);
-        self.fragment_shader_path = Some(fragment_shader);
     }
 
     pub fn add_texture(&mut self, texture_path: String) {

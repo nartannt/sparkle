@@ -6,3 +6,4 @@ pub mod graphic_component;
 pub mod input;
 pub mod scene;
 pub mod transform;
+pub mod script_component;

@@ -2,6 +2,10 @@
 #![allow(unused_variables)]
 
 use crate::game_object::GameObject;
+use crate::input::MouseState;
+use crate::input::KeyboardState;
+
+use crate::script_component::ScriptComponent;
 
 use crate::camera::Camera;
 use crate::graphic_component::load_model;
@@ -17,11 +21,25 @@ use glium::Frame;
 use glium::Program;
 use glium::Surface;
 
+use glium::winit::event::WindowEvent;
+
+use glium::texture::RawImage2d;
+use glium::texture::Texture2d;
+
 use legion::storage::Component;
 use legion::world::World;
 use legion::world::WorldOptions;
 use legion::IntoQuery;
 use legion::Entity;
+use legion::Schedule;
+use legion::systems::Builder;
+use legion::systems::Resources;
+use legion::systems::System;
+use legion::systems::Step::Systems;
+use legion::systems::Executor;
+use legion::systems::Step;
+
+use legion::systems::ParallelRunnable;
 
 use image::io::Reader as ImageReader;
 
@@ -42,6 +60,9 @@ pub struct Scene {
     // it makes sense to have a world per scene
     pub world: World,
 
+    // vec of steps to execute each frame
+    frame_steps : Vec<Step>,
+
     // when we add a GameObject to a scene,
     // if it has a GraphicComponent, if its model already exists, we don't do anything
     // else, we fetch it in the files and add it to the scene models
@@ -51,7 +72,7 @@ pub struct Scene {
     // the first String is for the vertex shaders and the second one for fragment shaders
     pub programs: HashMap<(String, String), Program>,
 
-    pub textures: HashMap<String, glium::texture::Texture2d>,
+    pub textures: HashMap<String, Texture2d>,
 
     // the camera which will draw the scene next, if it is none, the scene is not rendered
     pub render_cam: Option<Camera>,
@@ -67,6 +88,7 @@ impl Scene {
             programs: HashMap::new(),
             textures: HashMap::new(),
             world: World::new(WorldOptions::default()),
+            frame_steps : Vec::new(),
             render_cam: None,
         }
     }
@@ -82,6 +104,35 @@ impl Scene {
         self.game_objects.insert(go.get_id(), go_entry);
     }
 
+    pub fn execute_frame_steps
+        (&mut self, keyboard_state: &KeyboardState, mouse_state: &MouseState, window_event: &WindowEvent) {
+        let mut resources = Resources::default();
+        // TODO this is unsatisfactory, because the lifetime of WindowEvent will clearly
+        // last until the last call of the execution and will never be used after that
+        // but it still asks a static lifetime, probably need help from Lucas or Vincent
+        // on that one
+        // TODO there is redundancy here as we pass the internally maintained inputs as well as the
+        // whole of window_event, in the future, we will want to have a single structure which
+        // contains the nicely presented inputs for the users as well as the whole of window_event
+        // for those that need events for which I haven't implemented an interface
+        resources.insert(window_event.clone());
+        resources.insert(mouse_state.clone());
+        resources.insert(keyboard_state.clone());
+        for step in self.frame_steps.iter_mut() {
+            match step {
+                Systems(executor) => executor.execute(&mut self.world, &mut resources),
+                _ => (),
+            };
+        };
+    }
+
+    pub fn add_system<T: ParallelRunnable + 'static>(&mut self, system: T) {
+        let new_executor = Executor::new(vec![Box::new(system)]);
+        self.frame_steps.push(Systems(new_executor));
+    }
+
+
+
     // TODO find out if it is possible to take &mut self as argument instead of getting everything
     // through by hand
     pub fn load_graphic_component(
@@ -89,7 +140,7 @@ impl Scene {
         display_clone: &Display<WindowSurface>,
         models: &mut HashMap<String, ObjectModel>,
         programs: &mut HashMap<(String, String), Program>,
-        textures: &mut HashMap<String, glium::texture::Texture2d>,
+        textures: &mut HashMap<String, Texture2d>,
     ) {
         // loads and adds the model corresponding to the gc of the go if said model hasn't already
         // been loaded, when improving performance, will need to check that
@@ -118,8 +169,8 @@ impl Scene {
             // copied from the tutorial
             let image = ImageReader::open(texture_path).unwrap().decode().unwrap().to_rgba8();
             let image_dimensions = image.dimensions();
-            let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
-            let texture = glium::texture::Texture2d::new(display_clone, image).unwrap();
+            let image = RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+            let texture = Texture2d::new(display_clone, image).unwrap();
             textures.insert(texture_path.to_string(), texture); 
         } else {
             println!("Warning: object has graphic cock but no textures")
@@ -146,12 +197,12 @@ impl Scene {
     // will draw all active objects with active graphic components
     // we assume that all objects have at most one graphic component
     pub fn draw_scene(&mut self, mut target: Frame, camera: &Camera) {
-        //println!("drawing scene in theory");
+        //println!("drawing scene");
         // refreshes the background colour
         target.clear_color_and_depth((0.0, 0.0, 1.0, 1.0), 1.0);
 
-        // TODO set up lights properly (can wait some)
-        let light = [-1.0, 0.4, 0.9f32];
+        // TODO set up lights properly (can wait)
+        let light = [0.0, 0.0, 0.0f32];
 
         // parameters, not 100% what they do
         let params = glium::DrawParameters {
