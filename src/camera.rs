@@ -22,7 +22,7 @@ impl Camera {
                 Vector3::new(0.0, 0.0, 0.0),
                 Vector3::new(1.0, 1.0, 1.0),
             ),
-            fov: 0.1,
+            fov: 1.0,
         }
     }
 

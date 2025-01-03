@@ -5,7 +5,6 @@ use crate::game_object::GameObject;
 use crate::input::MouseState;
 use crate::input::KeyboardState;
 
-use crate::script_component::ScriptComponent;
 
 use crate::camera::Camera;
 use crate::graphic_component::load_model;
@@ -31,10 +30,7 @@ use legion::world::World;
 use legion::world::WorldOptions;
 use legion::IntoQuery;
 use legion::Entity;
-use legion::Schedule;
-use legion::systems::Builder;
 use legion::systems::Resources;
-use legion::systems::System;
 use legion::systems::Step::Systems;
 use legion::systems::Executor;
 use legion::systems::Step;
@@ -45,6 +41,10 @@ use image::io::Reader as ImageReader;
 
 use std::collections::HashMap;
 use std::path::Path;
+
+pub enum EventID {
+    Event(String),
+}
 
 pub struct Scene {
     pub name: String,
@@ -60,8 +60,14 @@ pub struct Scene {
     // it makes sense to have a world per scene
     pub world: World,
 
+    // steps to execute next frame
+    triggered_steps : Vec<String>,
+
     // vec of steps to execute each frame
-    frame_steps : Vec<Step>,
+    frame_steps : Vec<String>,
+
+    // hashmap containing the steps that can be added to the frame_steps
+    pub step_dict : HashMap<String, Step>,
 
     // when we add a GameObject to a scene,
     // if it has a GraphicComponent, if its model already exists, we don't do anything
@@ -89,6 +95,8 @@ impl Scene {
             textures: HashMap::new(),
             world: World::new(WorldOptions::default()),
             frame_steps : Vec::new(),
+            triggered_steps : Vec::new(),
+            step_dict : HashMap::new(),
             render_cam: None,
         }
     }
@@ -115,20 +123,59 @@ impl Scene {
         // whole of window_event, in the future, we will want to have a single structure which
         // contains the nicely presented inputs for the users as well as the whole of window_event
         // for those that need events for which I haven't implemented an interface
+        let new_triggered_steps = Vec::<String>::new();
+        resources.insert(new_triggered_steps);
         resources.insert(window_event.clone());
         resources.insert(mouse_state.clone());
         resources.insert(keyboard_state.clone());
-        for step in self.frame_steps.iter_mut() {
-            match step {
-                Systems(executor) => executor.execute(&mut self.world, &mut resources),
+        for step_key in self.frame_steps.iter_mut() {
+            match self.step_dict.get_mut(step_key) {
+                Some(Systems(executor)) => executor.execute(&mut self.world, &mut resources),
+                None => println!("WARNING: {} is not a valid system", step_key),
                 _ => (),
             };
         };
+        let mut new_triggered_steps = resources.get_mut::<Vec<String>>().unwrap();
+        self.triggered_steps.append(&mut new_triggered_steps);
     }
 
-    pub fn add_system<T: ParallelRunnable + 'static>(&mut self, system: T) {
+    // TODO same issues as execute_frame_steps
+    // TODO factorise with execute_frame_steps
+    // Warning when using this function the triggered calls are resolved in the same frame as they
+    // are called, it is easy to cause an infinite loop like this
+    pub fn execute_triggered_steps 
+        (&mut self, keyboard_state: &KeyboardState, mouse_state: &MouseState, window_event: &WindowEvent) {
+        if Vec::len(&self.triggered_steps) > 0 {
+            let mut resources = Resources::default();
+            let new_triggered_steps = Vec::<String>::new();
+            resources.insert(new_triggered_steps);
+            resources.insert(window_event.clone());
+            resources.insert(mouse_state.clone());
+            resources.insert(keyboard_state.clone());
+            for step_key in self.triggered_steps.iter_mut() {
+                match self.step_dict.get_mut(step_key) {
+                    Some(Systems(executor)) => executor.execute(&mut self.world, &mut resources),
+                    None => println!("WARNING: {} is not a valid system", step_key),
+                    _ => (),
+                };
+            };
+            let new_triggered_steps = resources.get_mut::<Vec<String>>().unwrap();
+            self.triggered_steps = new_triggered_steps.to_vec();
+            self.execute_triggered_steps(keyboard_state, mouse_state, window_event);
+        }
+    }
+
+    // a little bit ad-hoc for now, the boolean is set to true if the system is to be executed
+    // every frame and to false otherwise
+    // if a system with the same key already exists, it is overwritten
+    // TODO change previous behaviour
+    pub fn add_system<T: ParallelRunnable + 'static>(&mut self, system: T, system_key: String, each_frame: bool) {
         let new_executor = Executor::new(vec![Box::new(system)]);
-        self.frame_steps.push(Systems(new_executor));
+        // TODO this clone may not be necessary
+        let _  = self.step_dict.insert(system_key.clone(), Systems(new_executor));
+        if each_frame {
+            self.frame_steps.push(system_key);
+        }
     }
 
 
@@ -153,8 +200,11 @@ impl Scene {
         }
 
         // same thing as models but with shaders
+        // TODO very flimsy thing going on here
+        // PERF, we are using the entire shader source as a key to the hashmap
+        // needless to explain why this is incredibly dumb
         if let (Some(vertex_shader), Some(fragment_shader)) =
-            (&gc.vertex_shader_path, &gc.fragment_shader_path)
+            (&gc.vertex_shader_src, &gc.fragment_shader_src)
         {
             let program_key = (vertex_shader.clone(), fragment_shader.clone());
             programs.entry(program_key).or_insert_with(|| {
@@ -222,16 +272,17 @@ impl Scene {
             let (width, height) = target.get_dimensions();
             let aspect_ratio = height as f32 / width as f32;
 
-            let fov: f32 = 3.1 / 3.0;
+            let fov: f32 = 1.0;
             let zfar = 1024.0;
             let znear = 0.1;
 
             let f = 1.0 / (fov / 2.0).tan();
+            
 
             [
                 [f * aspect_ratio, 0.0, 0.0, 0.0],
                 [0.0, f, 0.0, 0.0],
-                [0.0, 0.0, (zfar + znear) / (zfar - znear), 1.0],
+                [0.0, 0.0,  (zfar + znear) / (zfar - znear), 1.0],
                 [0.0, 0.0, -(2.0 * zfar * znear) / (zfar - znear), 0.0],
             ]
         };
@@ -244,8 +295,8 @@ impl Scene {
             if gc.is_active() && gc.can_be_drawn() {
                 // TODO this is very unsatisfactory, need to find some way to not have to use clones
                 let program_key = &(
-                    gc.vertex_shader_path.clone().unwrap(),
-                    gc.fragment_shader_path.clone().unwrap(),
+                    gc.vertex_shader_src.clone().unwrap(),
+                    gc.fragment_shader_src.clone().unwrap(),
                 );
                 let object_geometry = self.models.get(gc.model_path.as_ref().unwrap()).unwrap();
                 let program = self.programs.get(program_key).unwrap();
@@ -262,7 +313,14 @@ impl Scene {
                         vertices,
                         indices,
                         &program,
-                        &uniform! {matrix: matrix, view: view, u_light: light, perspective: perspective, tex: texture},
+                        &uniform! {
+                            matrix: matrix,
+                            view: view, 
+                            u_light: light, 
+                            perspective: perspective, 
+                            tex: texture,
+                            brightness: gc.brightness,
+                        },
                         &params,
                     )
                     .unwrap();

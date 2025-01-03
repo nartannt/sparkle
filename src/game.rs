@@ -53,9 +53,7 @@ impl Game {
             //println!("beginning of game loop");
             let begin_frame_time = std::time::Instant::now();
             let next_frame_time = begin_frame_time + std::time::Duration::from_nanos(16_666_667);
-
             
-
             match ev {
                 glium::winit::event::Event::WindowEvent { event, .. } => {
 
@@ -102,6 +100,7 @@ impl Game {
                     _ => (),
                 };
                 active_scene.execute_frame_steps(&keyboard_state, &mouse_state, &event); 
+                active_scene.execute_triggered_steps(&keyboard_state, &mouse_state, &event); 
                 },
                 AboutToWait => {
                     window.request_redraw();

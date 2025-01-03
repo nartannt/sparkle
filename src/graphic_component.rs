@@ -38,35 +38,34 @@ pub struct GraphicComponent {
     pub is_active: bool,
     pub model_path: Option<String>,
     pub texture_path: Option<String>,
-    pub vertex_shader_path: Option<String>,
-    pub fragment_shader_path: Option<String>,
+
+    // TODO replace the src by the local file path
+    pub vertex_shader_src: Option<String>,
+    pub fragment_shader_src: Option<String>,
+
+    pub brightness: f32,
 }
 
 impl<'a> GraphicComponent {
     pub fn new(
         model_path: Option<String>,
     ) -> Self {
-        let vertex_file_res = fs::read_to_string("assets/shaders/vertex_shader.glsl".to_string());
-        match vertex_file_res {
-            Err(err) => {
-                println!("Warning, failed to open vertex shader file: {}", err);
-                assert!(false);
-            }
-            Ok(_) => {}
-        };
+        let vertex_shader_src = Some(include_str!("../assets/shaders/vertex_shader.glsl").to_string());
+        let fragment_shader_src = Some(include_str!("../assets/shaders/fragment_shader.glsl").to_string());
         GraphicComponent {
             is_active: true,
             model_path,
             texture_path: None,
-            vertex_shader_path: Some("assets/shaders/vertex_shader.glsl".to_string()),
-            fragment_shader_path: Some("assets/shaders/fragment_shader.glsl".to_string()),
+            vertex_shader_src,
+            fragment_shader_src,
+            brightness: 1.0f32,
         }
     }
 
     pub fn can_be_drawn(&self) -> bool {
         let res = self.model_path.is_some()
-            && self.vertex_shader_path.is_some()
-            && self.fragment_shader_path.is_some();
+            && self.vertex_shader_src.is_some()
+            && self.fragment_shader_src.is_some();
         return res;
     }
 
@@ -161,11 +160,12 @@ pub fn load_model(model_file_path: &Path, display: &Display<WindowSurface>) -> O
 // check if shaders already loaded?
 // TODO return an error, print warning and continue the best we can if function fails
 pub fn load_shaders<'a, F: Facade>(
-    vertex_shader_path: &str,
-    fragment_shader_path: &str,
+    vertex_shader_src: &str,
+    fragment_shader_src: &str,
     facade: &'a F,
 ) -> Option<Program> {
-    let vertex_file_res = fs::read_to_string(vertex_shader_path);
+    /*
+     * let vertex_file_res = fs::read_to_string(vertex_shader_path);
     let fragment_file_res = fs::read_to_string(fragment_shader_path);
 
     match vertex_file_res {
@@ -186,6 +186,7 @@ pub fn load_shaders<'a, F: Facade>(
 
     let vertex_shader_src = vertex_file_res.unwrap();
     let fragment_shader_src = fragment_file_res.unwrap();
+    */
 
     let res = glium::Program::from_source(facade, &vertex_shader_src, &fragment_shader_src, None);
     match res {

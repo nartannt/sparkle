@@ -7,11 +7,13 @@ out vec4 color;
 
 uniform vec3 u_light; 
 uniform sampler2D tex;
+uniform float brightness;
 
 void main() {
-    float brightness = dot(normalize(v_normal), normalize(u_light));
-    //vec4 dark_color = vec4(0.0, 0.0, 0.0, 1.0);
+    //float brightness = dot(normalize(v_normal), normalize(u_light));
+    vec4 dark_colour = vec4(0.0, 0.0, 0.0, 1.0);
     vec4 regular_colour = texture(tex, v_tex_coord);
     //color = vec4(mix(dark_color, regular_color, brightness));
-    color = regular_colour;
+    color = vec4(mix(dark_colour, regular_colour, brightness));
+    //color = regular_colour;
 }
